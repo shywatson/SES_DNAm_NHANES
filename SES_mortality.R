@@ -1395,7 +1395,8 @@ for (specific_reason in specific_reason_list){
       print(i)
       print(clock_list[i])
       work <-  readxl::read_excel(paste0("Results/SES specific reason models for ",tt," with specific death of ",specific_reason,
-                                         format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
+                                         "_02_06_2025.xlsx"),
+                                         #format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
                                   sheet = i)
       work <- as.data.frame(work[5,c(1:4,7)])
       names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value","sample_size")
@@ -1423,7 +1424,8 @@ for (specific_reason in specific_reason_list){
     #SES_pp <- "blackvswhite"
     
     work <-  readxl::read_excel(paste0("Results/SES specific reason models for ",SES_pp," with specific death of ",specific_reason,
-                                       format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
+                                       "_02_06_2025.xlsx"),
+                                #format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
                                 sheet = 1)
     
     work <- as.data.frame(work[23,])
@@ -1444,7 +1446,6 @@ writeData(wb,x=dataforsurvival_final,sheet = "Survival",
           rowNames = F)
 
 
-dataforsurvival_final <- NULL
 for (specific_reason in specific_reason_list){
   dataformediator_final <- NULL
   for (tt in var_list){
@@ -1455,7 +1456,7 @@ for (specific_reason in specific_reason_list){
       #i=1;i=13
       print(i)
       print(clock_list[i])
-      work <-  readxl::read_excel(paste0("Results/SES specific reason models for ",SES_pp," with specific death of ",specific_reason,
+      work <-  readxl::read_excel(paste0("Results/SES specific reason models for ",tt," with specific death of ",specific_reason,
                                          format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
                                   sheet = i)
       work <- as.data.frame(work[33,c(4:6,7)])
