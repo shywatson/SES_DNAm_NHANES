@@ -74,12 +74,21 @@ nhBioA <- read.csv("Raw_clean_SESmortality_01_21_2025.csv")
 
 # Creat death age
 nhBioA$deathage <- nhBioA$permth_int/12+ nhBioA$age
+table(nhBioA$dead,useNA = "a")
+nhBioA$undead <- NA
+nhBioA$undead[nhBioA$dead==1] <- 0
+nhBioA$undead[nhBioA$dead==0] <- 1
+table(nhBioA$dead,nhBioA$undead,useNA = "a")
 
 # Create binary exposures
 nhBioA$otherHisp<-ifelse(nhBioA$ridreth1==2 ,1,0)
 nhBioA$otherRace<-ifelse(nhBioA$ridreth1==5 ,1,0)
 table(paste0(nhBioA$mexican,nhBioA$white,
              nhBioA$black,nhBioA$otherHisp,nhBioA$otherRace),useNA = "a")
+nhBioA$otherRacevswhite <- NA
+nhBioA$otherRacevswhite[nhBioA$otherRace==1] <- 1
+nhBioA$otherRacevswhite[nhBioA$white==1] <- 0
+table(nhBioA$otherRacevswhite,useNA = "a")
 
 nhBioA$drinker[!is.na(nhBioA$abstainer)] <- 0
 nhBioA$drinker[nhBioA$abstainer==0] <- 1
@@ -112,6 +121,10 @@ nhBioA$somecollvscoll <- NA
 nhBioA$somecollvscoll[nhBioA$somecoll==1] <- 1
 nhBioA$somecollvscoll[nhBioA$coll==1] <- 0
 table(nhBioA$somecollvscoll,useNA = "a")
+nhBioA$hsvssomecoll <- NA
+nhBioA$hsvssomecoll[nhBioA$hs==1] <- 1
+nhBioA$hsvssomecoll[nhBioA$somecoll==1] <- 0
+table(nhBioA$hsvssomecoll,useNA = "a")
 
 nhBioA$below1vsabove5 <- NA
 nhBioA$below1vsabove5[nhBioA$pir_below1==1] <- 1
@@ -198,6 +211,11 @@ multiimpu_analysis <- merge(multiimpu_analysis,analysis[,c("seqn","WTDN4YR","sdm
                                                            "resmort_competing","cermort_competing","diabmort_competing"
 )], all=T,by="seqn")
 
+multiimpu_analysis$undead <- NA
+multiimpu_analysis$undead[multiimpu_analysis$dead==1] <- 0
+multiimpu_analysis$undead[multiimpu_analysis$dead==0] <- 1
+table(multiimpu_analysis$dead,multiimpu_analysis$undead,useNA = "a")
+
 multiimpu_analysis$drinker[!is.na(multiimpu_analysis$abstainer)] <- 0
 multiimpu_analysis$drinker[multiimpu_analysis$abstainer==0] <- 1
 table(multiimpu_analysis$abstainer,multiimpu_analysis$drinker,useNA = "a")
@@ -216,6 +234,10 @@ multiimpu_analysis$latinovsblack[multiimpu_analysis$mexican==1] <- 1
 multiimpu_analysis$latinovsblack[multiimpu_analysis$otherHisp==1] <- 1
 multiimpu_analysis$latinovsblack[multiimpu_analysis$black==1] <- 0
 table(multiimpu_analysis$latinovsblack,useNA = "a")
+multiimpu_analysis$otherRacevswhite <- NA
+multiimpu_analysis$otherRacevswhite[multiimpu_analysis$otherRace==1] <- 1
+multiimpu_analysis$otherRacevswhite[multiimpu_analysis$white==1] <- 0
+table(multiimpu_analysis$otherRacevswhite,useNA = "a")
 
 multiimpu_analysis$lthsvscoll <- NA
 multiimpu_analysis$lthsvscoll[multiimpu_analysis$lths==1] <- 1
@@ -234,6 +256,10 @@ multiimpu_analysis$somecollvscoll <- NA
 multiimpu_analysis$somecollvscoll[multiimpu_analysis$somecoll==1] <- 1
 multiimpu_analysis$somecollvscoll[multiimpu_analysis$coll==1] <- 0
 table(multiimpu_analysis$somecollvscoll,useNA = "a")
+multiimpu_analysis$hsvssomecoll <- NA
+multiimpu_analysis$hsvssomecoll[multiimpu_analysis$hs==1] <- 1
+multiimpu_analysis$hsvssomecoll[multiimpu_analysis$somecoll==1] <- 0
+table(multiimpu_analysis$hsvssomecoll,useNA = "a")
 
 multiimpu_analysis$below1vsabove5 <- NA
 multiimpu_analysis$below1vsabove5[multiimpu_analysis$pir_below1==1] <- 1
@@ -523,17 +549,17 @@ behav_biomarker <- c("sedentary","hei","packyrs","drinker",
                      "lbdtcsi","HDL","LDL","Glucose","CRP")
 clock_list <- c(clock_list,behav_biomarker)
 
-var_list <- c("blackvswhite","latinovswhite","latinovsblack",#"otherHispvswhite","otherRacevswhite",
-              "lthsvscoll","hsvscoll","somecollvscoll",
+var_list <- c("blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+              "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
               "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
               "lowwhitevshiwhite","hibluevshiwhite",
               "lowbluevshiwhite","noworkvshiwhite")#
 
-SES_tablelist <- list(c("blackvswhite","latinovswhite","latinovsblack"),#"otherHispvswhite","otherRacevswhite",
-                       c("lthsvscoll","hsvscoll","somecollvscoll"),
-                       c("below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5"),
-                       c("lowwhitevshiwhite","hibluevshiwhite",
-                         "lowbluevshiwhite","noworkvshiwhite"))#
+SES_tablelist <- list(c("blackvswhite","latinovswhite","otherRacevswhite"),#"otherHispvswhite","otherRacevswhite",
+                      c("lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll"),
+                      c("below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5"),
+                      c("lowwhitevshiwhite","hibluevshiwhite",
+                        "lowbluevshiwhite","noworkvshiwhite"))#
 
 covariates <- "+female+age+agesq+forborn"
 # covariates <- "+female+age+agesq+forborn+lbxlypct+lbxmopct+lbxnepct+lbxeopct+lbxbapct"
@@ -541,8 +567,8 @@ covariates <- "+female+age+agesq+forborn"
 ## block 6.1: Survival mediation main models
 ####################################################################################################
 for (var in var_list){
-  # var <- "blackvswhite"
-
+  # var <- "otherRacevswhite"
+  
   explore_surveydata <- get("svyNHEanalysis_multiimpu")  ## get imputed survey object
   # explore_surveydata <- get("svyNHEanalysis") ## get completed cases survey object
   
@@ -593,25 +619,25 @@ for (var in var_list){
                                         as.formula(paste0("Surv(deathage,dead)~",var,
                                                           covariates)), dist="weibull")
     tryCatch({      
-    out.fit <- survey::svysurvreg(design=explore_surveydata,
-                                  as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
-                                                    covariates)), dist="weibull")
-    summary(out.fit)
-    
-    #### causal mediation models
-    med.out <- mediate(med.fit,out.fit,treat=var,mediator=clock)
-    summary(med.out)
-    
-    ###################################################################################################
-    #### Create table
-    temp <- as.data.frame(extract_mediation_summary(summary(med.out)))[c(5,8:10),]
-    temp$label <- rownames(temp)
-    temp <- rbind(names(temp),temp)
-    temp <- cbind(temp,matrix(NA,nrow = nrow(temp),ncol=1))
-    temp$sample <- med.out$nobs
-    names(temp) <- 1:7 },error=function(e){
-      cat("Error",conditionMessage(e),"\n");temp <- as.data.frame(matrix(data = NA,nrow = 7,ncol = 4 ))
-    })
+      out.fit <- survey::svysurvreg(design=explore_surveydata,
+                                    as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
+                                                      covariates)), dist="weibull")
+      summary(out.fit)
+      
+      #### causal mediation models
+      med.out <- mediate(med.fit,out.fit,treat=var,mediator=clock)
+      summary(med.out)
+      
+      ###################################################################################################
+      #### Create table
+      temp <- as.data.frame(extract_mediation_summary(summary(med.out)))[c(5,8:10),]
+      temp$label <- rownames(temp)
+      temp <- rbind(names(temp),temp)
+      temp <- cbind(temp,matrix(NA,nrow = nrow(temp),ncol=1))
+      temp$sample <- med.out$nobs
+      names(temp) <- 1:7 },error=function(e){
+        cat("Error",conditionMessage(e),"\n");temp <- as.data.frame(matrix(data = NA,nrow = 7,ncol = 4 ))
+      })
     
     #################################
     weib_results_1 <- as.data.frame(cbind(summary(out.fit_nomed, df.resid=Inf)$table[,1],(summary(out.fit_nomed, df.resid=Inf)$table[,1]-summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96),
@@ -758,8 +784,8 @@ for (tt in var_list){
                                              " ","YangCell","PhenoAge","GrimAgeMort","HorvathTelo","GrimAge2Mort",
                                              "   ","DunedinPoAm","      ",
                                              "sedentary","hei","packyrs","drinker","       ",
-                                               "waist2thigh","BMI","         ",
-                                               "lbdtcsi","HDL","LDL","Glucose","CRP")
+                                             "waist2thigh","BMI","         ",
+                                             "lbdtcsi","HDL","LDL","Glucose","CRP")
   
   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA," "))
   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"   "))
@@ -773,7 +799,9 @@ for (tt in var_list){
   
   dataforplots$set <- factor(dataforplots$set,levels=plot_clock_list)
   dataforplots$sign <- ""
-  dataforplots$sign[dataforplots$p_value<=(0.05)&!is.na(dataforplots$p_value)] <- "*"
+  dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
+  dataforplots$sign2 <- ""
+  dataforplots$sign2[dataforplots$p_value<(0.05/24)&!is.na(dataforplots$p_value)] <- "**"
   
   for (temp in c("Estimate","coef_lowCI","coef_highCI")){
     dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
@@ -792,6 +820,7 @@ for (tt in var_list){
           geom_vline(xintercept = 16,color="purple",linetype="dashed")+
           geom_vline(xintercept = 21,color="purple",linetype="dashed")+geom_vline(xintercept = 24,color="purple",linetype="dashed")+
           geom_text(aes(y=coef_highCI,label=sign), vjust=-0.01, color="red",size = 10)+
+          geom_text(aes(y=coef_highCI,label=sign2), vjust=-0.01, color="red",size = 10)+
           labs(y="Proportion of mediated effects")+theme(axis.text.x = element_text(angle=30,hjust = 1))   )
 }
 dev.off()
@@ -803,7 +832,7 @@ dev.off()
 ## block 6.3: Bar plots putting together for main models
 ####################################################################################################
 library(ggplot2)
-pdf(paste0("Results/SES bar plots for the main models putting together ",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
+pdf(paste0("Results/SES bar plots for the main models putting together",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
     width = 20,height = 5)
 
 for (tt in SES_tablelist){
@@ -854,7 +883,7 @@ for (tt in SES_tablelist){
   dataforplots$var <- factor(dataforplots$var,levels=tt)
   
   dataforplots$sign <- ""
-  dataforplots$sign[dataforplots$p_value<=(0.05)&!is.na(dataforplots$p_value)] <- "*"
+  dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
   
   for (temp in c("Estimate","coef_lowCI","coef_highCI")){
     dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
@@ -975,8 +1004,8 @@ for (specific_reason in specific_reason_list){
   print(specific_reason)
   
   if (specific_reason %in% c("hrtmort","canmort")){
-    var_list <-  c("blackvswhite","latinovswhite","latinovsblack",#"otherHispvswhite","otherRacevswhite",
-                   "lthsvscoll","hsvscoll","somecollvscoll",
+    var_list <-  c("blackvswhite","latinovswhite","latinovsblack","otherRacevswhite",#"otherHispvswhite","otherRacevswhite",
+                   "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
                    "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
                    "lowwhitevshiwhite","hibluevshiwhite",
                    "lowbluevshiwhite","noworkvshiwhite")#
@@ -1050,14 +1079,14 @@ for (specific_reason in specific_reason_list){
                                           as.formula(paste0("Surv(deathage,",specific_reason,"==1)~",var,
                                                             covariates)), dist="weibull")
       tryCatch({      
-      out.fit <- survey::svysurvreg(design=explore_surveydata,
-                                    as.formula(paste0("Surv(deathage,",specific_reason,"==1)~",var,"+",clock,
-                                                      covariates)), dist="weibull")
-      summary(out.fit)
-      
-      
-      #### causal mediation models
-
+        out.fit <- survey::svysurvreg(design=explore_surveydata,
+                                      as.formula(paste0("Surv(deathage,",specific_reason,"==1)~",var,"+",clock,
+                                                        covariates)), dist="weibull")
+        summary(out.fit)
+        
+        
+        #### causal mediation models
+        
         med.out <- mediate(med.fit,out.fit,treat=var,mediator=clock)
         summary(med.out)
         
@@ -1202,21 +1231,21 @@ for (specific_reason in specific_reason_list){
   
   
   if (specific_reason %in% c("hrtmort","canmort","accimort","diabmort")){
-    var_list <-  c("blackvswhite","latinovswhite","latinovsblack",#"otherHispvswhite","otherRacevswhite",
-                         "lthsvscoll","hsvscoll","somecollvscoll",
-                         "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
-                         "lowwhitevshiwhite","hibluevshiwhite",
-                         "lowbluevshiwhite","noworkvshiwhite")#
+    var_list <-  c("blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+                   "lthsvscoll","hsvscoll","somecollvscoll",
+                   "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
+                   "lowwhitevshiwhite","hibluevshiwhite",
+                   "lowbluevshiwhite","noworkvshiwhite")#
   } else if (specific_reason %in% c("cermort")){
     var_list <-  c("blackvswhite","latinovswhite","latinovsblack",
-                         #"lthsvscoll","lths_hsvscoll",
-                         "below1vsabove5","below2vsabove5","lowwhitevshiwhite","hibluevshiwhite",
-                         "lowbluevshiwhite","noworkvshiwhite")#
+                   #"lthsvscoll","lths_hsvscoll",
+                   "below1vsabove5","below2vsabove5","lowwhitevshiwhite","hibluevshiwhite",
+                   "lowbluevshiwhite","noworkvshiwhite")#
   } else if (specific_reason %in% c("resmort")){
     var_list <-  c("blackvswhite","latinovswhite","latinovsblack",
-                         "lthsvscoll","lths_hsvscoll",
-                         "below1vsabove5","below2vsabove5","lowwhitevshiwhite","hibluevshiwhite",
-                         "lowbluevshiwhite")#,"noworkvshiwhite"
+                   "lthsvscoll","lths_hsvscoll",
+                   "below1vsabove5","below2vsabove5","lowwhitevshiwhite","hibluevshiwhite",
+                   "lowbluevshiwhite")#,"noworkvshiwhite"
   }
   
   for (tt in var_list){
@@ -1259,7 +1288,7 @@ for (specific_reason in specific_reason_list){
     
     dataforplots$set <- factor(dataforplots$set,levels=plot_clock_list)
     dataforplots$sign <- ""
-    dataforplots$sign[dataforplots$p_value<=(0.05)&!is.na(dataforplots$p_value)] <- "*"
+    dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
     
     
     for (temp in c("Estimate","coef_lowCI","coef_highCI")){
@@ -1297,7 +1326,7 @@ library(ggplot2)
 specific_reason_list <- c("hrtmort","canmort")#,"accimort","diabmort","cermort","resmort"
 
 for (specific_reason in specific_reason_list){
-  pdf(paste0("Results/SES bar plots for the specific cause_",specific_reason," models putting together ",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
+  pdf(paste0("Results/SES bar plots for the specific cause_",specific_reason," models putting together",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
       width = 20,height = 5)
   
   for (tt in SES_tablelist){
@@ -1348,7 +1377,9 @@ for (specific_reason in specific_reason_list){
     dataforplots$var <- factor(dataforplots$var,levels=tt)
     
     dataforplots$sign <- ""
-    dataforplots$sign[dataforplots$p_value<=(0.05)&!is.na(dataforplots$p_value)] <- "*"
+    dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
+    dataforplots$sign2 <- ""
+    dataforplots$sign2[dataforplots$p_value<(0.05/24)&!is.na(dataforplots$p_value)] <- "**"
     
     for (temp in c("Estimate","coef_lowCI","coef_highCI")){
       dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
@@ -1368,6 +1399,7 @@ for (specific_reason in specific_reason_list){
             geom_vline(xintercept = 21,color="purple",linetype="dashed")+geom_vline(xintercept = 24,color="purple",linetype="dashed")+
             scale_color_manual(values = c("red","blue","orange","grey"))+
             geom_text(aes(y=coef_highCI,label=sign), vjust=-0.01, color="red",size = 10)+
+            geom_text(aes(y=coef_highCI,label=sign2), vjust=-0.01, color="red",size = 10)+
             labs(y="Proportion of mediated effects")+theme(axis.text.x = element_text(angle=30,hjust = 1))   )
     jj=jj+1
   }
@@ -1395,8 +1427,7 @@ for (specific_reason in specific_reason_list){
       print(i)
       print(clock_list[i])
       work <-  readxl::read_excel(paste0("Results/SES specific reason models for ",tt," with specific death of ",specific_reason,
-                                         "_02_06_2025.xlsx"),
-                                         #format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
+                                         format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
                                   sheet = i)
       work <- as.data.frame(work[5,c(1:4,7)])
       names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value","sample_size")
@@ -1424,8 +1455,7 @@ for (specific_reason in specific_reason_list){
     #SES_pp <- "blackvswhite"
     
     work <-  readxl::read_excel(paste0("Results/SES specific reason models for ",SES_pp," with specific death of ",specific_reason,
-                                       "_02_06_2025.xlsx"),
-                                #format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
+                                       format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
                                 sheet = 1)
     
     work <- as.data.frame(work[23,])
@@ -1480,6 +1510,132 @@ for (specific_reason in specific_reason_list){
 saveWorkbook(wb, file=paste0("Results/specific reason models print tables.xlsx"), overwrite = T)
 ####################################################################################################
 
+
+####################################################################################################
+##  block 6.9: sample descriptive for categorical variables without missing by group
+####################################################################################################
+variable_list_sample_categorical <- c("white","black","mexican","otherHisp","otherRace","",
+                                      "lths","hs","somecoll","coll","",
+                                      "pir_below1","pir_1_2","pir_2_5","pir_above5","",
+                                      "hiwhite","lowwhite","hiblue","lowblue","nowork","",
+                                      "female","male","", "nativity","forborn","",
+                                      "active","sedentary","","abstainer","drinker")#,"","dead","hrtmort","canmort"
+
+
+## descriptive tables
+descriptive_categorical_bygroup <- NULL
+
+for (tt in c("overallSample","dead","undead")){
+  #tt="undead"
+  print(tt)
+  i=1;descriptive_categorical <- NULL
+  
+  for (var in variable_list_sample_categorical){
+    # var="white"
+    
+    explore_dataset <- get("rawanalysis_multiimpu") ## get imputed dataset
+    # explore_dataset <- get("rawanalysis") ## get completed cases dataset
+    
+    explore_dataset <- explore_dataset[explore_dataset[,tt]==1,]
+    
+    if (var==""){
+      temp_2 <- as.data.frame(matrix(nrow=1,ncol = 4))
+    } else{
+      #print(var)
+      
+      temp_1 <- as.data.frame(table(explore_dataset[,var],useNA = "a"))
+      temp_1$Var1 <- as.character(temp_1$Var1)
+      temp_1$Var1[temp_1$Var1==1] <- "Yes"
+      temp_1$Var1[temp_1$Var1==0] <- "No"
+      if (!"Yes" %in% temp_1$Var1){temp_1 <- rbind(temp_1,c("Yes",0))}
+      
+      temp_1$Per <- as.numeric(temp_1$Freq)/nrow(explore_dataset[!is.na(explore_dataset[,var]),])
+      
+      temp_1$Var1 <- factor(temp_1$Var1,levels = c("Yes"))
+      
+      temp_1 <- temp_1[order(temp_1$Var1),]
+      temp_1 <- temp_1[!is.na(temp_1$Var1),]
+      
+      temp_2 <- cbind(c(var,rep("",nrow(temp_1)-1)),temp_1)
+    }
+    
+    if (!is.null(names(descriptive_categorical))){
+      names(temp_2) <- names(descriptive_categorical)}
+    
+    descriptive_categorical <- rbind(descriptive_categorical,temp_2)
+    
+    i=i+1
+  }
+  
+  descriptive_categorical$variables <- descriptive_categorical$`c(var, rep("", nrow(temp_1) - 1))`
+  descriptive_categorical$`c(var, rep("", nrow(temp_1) - 1))` <- NULL
+  descriptive_categorical$Var1 <- NULL
+  names(descriptive_categorical) <- paste0( tt,"_", c("count","percentage"))
+  
+  if (is.null(descriptive_categorical_bygroup)) {
+    descriptive_categorical_bygroup <- descriptive_categorical } else {
+      descriptive_categorical_bygroup <- cbind(descriptive_categorical_bygroup,descriptive_categorical)
+    }
+}
+
+wb <- createWorkbook()
+addWorksheet(wb, "Table 1_nonmissing_raw")
+writeData(wb,x=descriptive_categorical_bygroup,sheet = "Table 1_nonmissing_raw",
+          rowNames = F)
+
+####################################################################################################
+##  block 6.10: sample descriptive for continuous variables by group
+####################################################################################################
+variable_list_sample_continuous <- c("age","hei","packyrs","waist2thigh","BMI",
+                                     "lbdtcsi","HDL","LDL","Glucose","CRP",
+                                     "lbxlypct","lbxmopct","lbxnepct","lbxeopct","lbxbapct")
+## descriptive tables
+descriptive_continuous_bygroup <- as.data.frame(variable_list_sample_continuous)
+
+for (tt in c("overallSample","dead","undead")){
+  i=1; descriptive_continuous <- NULL
+  for (var in variable_list_sample_continuous){
+    #var <- "age"
+
+    explore_dataset <- get("rawanalysis_multiimpu") ## get imputed dataset
+    # explore_dataset <- get("rawanalysis") ## get completed cases dataset
+
+    explore_dataset <- explore_dataset[explore_dataset[,tt]==1,]
+
+    print(var)
+
+    if (length(table(is.na(explore_dataset[,var])))>1) {
+      temp_0 <- table(!is.na(explore_dataset[,var]))[1]/nrow(explore_dataset)
+    } else {temp_0 <- 0}
+
+    temp_1 <- mean(explore_dataset[,var],na.rm=TRUE)
+    temp_2 <- sd(explore_dataset[,var],na.rm=TRUE)
+    # temp_3 <- quantile(explore_dataset[,var],na.rm=TRUE,
+    #                    c(.25,.5,.75))
+    temp_4 <- cbind(var,table(is.na(explore_dataset[,var]))[1],#as.data.frame(temp_0),
+                    as.data.frame(temp_1),as.data.frame(temp_2)#,
+                    #t(as.data.frame(temp_3)),
+    )
+
+    descriptive_continuous <- rbind(descriptive_continuous,temp_4)
+    i=i+1
+  }
+  descriptive_continuous$var <- NULL
+  names(descriptive_continuous) <- paste0( tt,"_", c(#"missing_rate",
+    "count","mean","se"#,
+    #"lower_quartile","median","upper_quartile",
+  ))
+
+
+  descriptive_continuous_bygroup <- cbind(descriptive_continuous_bygroup,descriptive_continuous)
+}
+
+addWorksheet(wb, "Table 1_continuous")
+writeData(wb,x=descriptive_continuous_bygroup,sheet = "Table 1_continuous",
+          rowNames = F)
+saveWorkbook(wb, file=paste0("Results/Table 1 by group",
+                             format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"), overwrite = T)
+####################################################################################################
 
 
 ####################################################################################################
