@@ -55,8 +55,10 @@ extract_mediation_summary <- function (x) {
 
 
 clock_list <- c("HannumAge","HorvathAge","WeidnerAge","LinAge","VidalBraloAge",
-                "SkinBloodAge","ZhangAge","YangCell","PhenoAge","GrimAgeMort","HorvathTelo","GrimAge2Mort",
-                "DunedinPoAm")
+                "SkinBloodAge","ZhangAge",
+                "PhenoAge","GrimAgeMort","GrimAge2Mort",
+                "DunedinPoAm",
+                "YangCell","HorvathTelo")
 # clock_list <- c("GDF15Mort","B2MMort","CystatinCMort","TIMP1Mort","ADMMort","PAI1Mort","LeptinMort",
 #                 "PACKYRSMort","CRPMort","logA1CMort")
 
@@ -81,6 +83,11 @@ nhBioA$undead[nhBioA$dead==0] <- 1
 table(nhBioA$dead,nhBioA$undead,useNA = "a")
 
 # Create binary exposures
+table(paste0(nhBioA$otherHisp,nhBioA$mexican,nhBioA$latinovswhite))
+nhBioA$latino <- 0
+nhBioA$latino[nhBioA$latinovswhite==1] <- 1
+table(paste0(nhBioA$otherHisp,nhBioA$mexican,nhBioA$latino))
+
 nhBioA$otherHisp<-ifelse(nhBioA$ridreth1==2 ,1,0)
 nhBioA$otherRace<-ifelse(nhBioA$ridreth1==5 ,1,0)
 table(paste0(nhBioA$mexican,nhBioA$white,
@@ -238,6 +245,11 @@ multiimpu_analysis$otherRacevswhite <- NA
 multiimpu_analysis$otherRacevswhite[multiimpu_analysis$otherRace==1] <- 1
 multiimpu_analysis$otherRacevswhite[multiimpu_analysis$white==1] <- 0
 table(multiimpu_analysis$otherRacevswhite,useNA = "a")
+
+multiimpu_analysis$latino <- 0
+multiimpu_analysis$latino[multiimpu_analysis$latinovswhite==1] <- 1
+table(paste0(multiimpu_analysis$otherHisp,multiimpu_analysis$mexican,multiimpu_analysis$latino))
+
 
 multiimpu_analysis$lthsvscoll <- NA
 multiimpu_analysis$lthsvscoll[multiimpu_analysis$lths==1] <- 1
@@ -537,6 +549,56 @@ addWorksheet(wb, "Table 1_continuous_multiimpu")
 writeData(wb,x=descriptive_continuous,sheet = "Table 1_continuous_multiimpu",
           rowNames = F)
 ####################################################################################################
+
+####################################################################################################
+## block 5.3: correlation matrix for clocks
+####################################################################################################
+tcorrelation <- rcorr(as.matrix(rawanalysis[,c(clock_list,"age","sedentary","hei","packyrs","drinker",
+                                               "waist2thigh","BMI",
+                                               "lbdtcsi","HDL","LDL","Glucose","CRP")]))
+tcorrelation_write <- as.matrix(tcorrelation$r)
+library(ggcorrplot)
+pdf(paste0("Results/correlation plot",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
+    width = 10,height = 5)
+ggcorrplot(tcorrelation_write, type = "lower", lab_size = 1.5, lab=T, 
+           colors = c("#6D9EC1", "white", "#E46726"))+ theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1,size=5),  # Rotate x-axis labels
+    axis.text.y.right = element_text(size=5),  # Right y-axis labels
+    axis.ticks.y.right = element_line(),
+    plot.margin = margin(5.5, 20, 5.5, 5.5)
+  ) + scale_y_discrete(position = "right")+
+  guides(fill = guide_colorbar(title = "Correlation coefficients"))+
+  labs(fill = "Correlation", x = NULL, y = NULL)
+dev.off()
+
+test <- rawanalysis[rawanalysis$overallSample==1,c(clock_list,"age")]
+test <- data.frame(scale(test, center=TRUE, scale=TRUE))
+EFAresult1 =  factanal(~ ., data=test, factors = 7, rotation = "none", 
+                       na.action = na.exclude)
+EFAresult1#1, 2, 6, 7, 8
+# library(lavaan)
+# efa.model <- '
+#     efa("efa")*f1 + 
+#     efa("efa")*f2 + 
+#     efa("efa")*f3 + 
+#     efa("efa")*f4 + 
+#     efa("efa")*f5 + 
+#     efa("efa")*f6 + 
+#     efa("efa")*f7 + 
+#     efa("efa")*f8 =~ HannumAge + HorvathAge + WeidnerAge + LinAge + VidalBraloAge + 
+#     SkinBloodAge + ZhangAge + PhenoAge + GrimAgeMort+GrimAge2Mort+DunedinPoAm+YangCell+
+#     HorvathTelo+age+sedentary+hei+packyrs+drinker+waist2thigh+BMI+lbdtcsi+
+# #   HDL+LDL+Glucose+CRP
+# '
+# fit <- cfa(efa.model, data = test)
+# summary(fit, standardized = TRUE)
+
+EFA_results <- as.matrix(EFAresult1$loadings)
+addWorksheet(wb, "EFA_raw")
+
+writeData(wb,x=EFA_results,sheet = "EFA_raw",rowNames = T)
+####################################################################################################
 saveWorkbook(wb, file=paste0("Results/Table 1",format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"), overwrite = T)
 ####################################################################################################
 
@@ -549,11 +611,7 @@ behav_biomarker <- c("sedentary","hei","packyrs","drinker",
                      "lbdtcsi","HDL","LDL","Glucose","CRP")
 clock_list <- c(clock_list,behav_biomarker)
 
-var_list <- c("blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
-              "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
-              "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
-              "lowwhitevshiwhite","hibluevshiwhite",
-              "lowbluevshiwhite","noworkvshiwhite")#
+
 
 SES_tablelist <- list(c("blackvswhite","latinovswhite","otherRacevswhite"),#"otherHispvswhite","otherRacevswhite",
                       c("lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll"),
@@ -561,195 +619,226 @@ SES_tablelist <- list(c("blackvswhite","latinovswhite","otherRacevswhite"),#"oth
                       c("lowwhitevshiwhite","hibluevshiwhite",
                         "lowbluevshiwhite","noworkvshiwhite"))#
 
-covariates <- "+female+age+agesq+forborn"
 # covariates <- "+female+age+agesq+forborn+lbxlypct+lbxmopct+lbxnepct+lbxeopct+lbxbapct"
 ####################################################################################################
 ## block 6.1: Survival mediation main models
 ####################################################################################################
-for (var in var_list){
-  # var <- "otherRacevswhite"
+loopgroup <- c("overallSample","female","male","black","white","latino")#"female","male","black","white","latino"
+
+
+for (Group in loopgroup){
+  #Group <- "black"
+  print(Group)
   
-  explore_surveydata <- get("svyNHEanalysis_multiimpu")  ## get imputed survey object
-  # explore_surveydata <- get("svyNHEanalysis") ## get completed cases survey object
-  
-  explore_surveydata$variables$test <- explore_surveydata$variables[,var]
-  explore_surveydata <- subset(explore_surveydata,!is.na(test)&WTDN4YR>0)
-  #print(var)
-  
-  ##############  MODELS
-  model_printtable <-  NULL
-  
-  for (clock in clock_list){
-    #clock <- "Horvath"; clock <- "DNAmGrimAge2"
-    
-    print(clock)
-    #### mediator model
-    med.fit <- survey::svyglm(design=explore_surveydata,paste0(clock,"~",var,covariates),family="gaussian")
-    summary(med.fit)
-    med.fit$df.null
-    
-    #### mediator_outcome model
-    med_out.fit <- survey::svysurvreg(design=explore_surveydata,
-                                      as.formula(paste0("Surv(deathage,dead)~",clock,
-                                                        covariates)), dist="weibull")
-    summary(med_out.fit)
-    
-    
-    #### outcome model without mediators
-    #table(rawanalysis$deathage)
-    model_1_nomed <- survey::svycoxph(design=explore_surveydata,
-                                      as.formula(paste0("Surv(deathage,dead)~",var,
-                                                        covariates)))
-    model_1 <- survey::svycoxph(design=explore_surveydata,
-                                as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
-                                                  covariates)))
-    summary(model_1)
-    
-    
-    
-    model_3_nomed <- survreg(as.formula(paste0("Surv(deathage,dead)~",var,
-                                               covariates)), dist="weibull",data=rawanalysis)
-    
-    model_3 <- survreg(as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
-                                         covariates)), dist="weibull",data=rawanalysis)
-    summary(model_3)
-    
-    
-    out.fit_nomed <- survey::svysurvreg(design=explore_surveydata,
-                                        as.formula(paste0("Surv(deathage,dead)~",var,
-                                                          covariates)), dist="weibull")
-    tryCatch({      
-      out.fit <- survey::svysurvreg(design=explore_surveydata,
-                                    as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
-                                                      covariates)), dist="weibull")
-      summary(out.fit)
-      
-      #### causal mediation models
-      med.out <- mediate(med.fit,out.fit,treat=var,mediator=clock)
-      summary(med.out)
-      
-      ###################################################################################################
-      #### Create table
-      temp <- as.data.frame(extract_mediation_summary(summary(med.out)))[c(5,8:10),]
-      temp$label <- rownames(temp)
-      temp <- rbind(names(temp),temp)
-      temp <- cbind(temp,matrix(NA,nrow = nrow(temp),ncol=1))
-      temp$sample <- med.out$nobs
-      names(temp) <- 1:7 },error=function(e){
-        cat("Error",conditionMessage(e),"\n");temp <- as.data.frame(matrix(data = NA,nrow = 7,ncol = 4 ))
-      })
-    
-    #################################
-    weib_results_1 <- as.data.frame(cbind(summary(out.fit_nomed, df.resid=Inf)$table[,1],(summary(out.fit_nomed, df.resid=Inf)$table[,1]-summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96),
-                                          (summary(out.fit_nomed, df.resid=Inf)$table[,1]+summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96),
-                                          exp(summary(out.fit_nomed, df.resid=Inf)$table[,1]*(-1)/out.fit_nomed$scale),
-                                          exp((summary(out.fit_nomed, df.resid=Inf)$table[,1]+summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit_nomed$scale),
-                                          exp((summary(out.fit_nomed, df.resid=Inf)$table[,1]-summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit_nomed$scale)))
-    weib_results_1$label <- rownames(weib_results_1)
-    names(weib_results_1) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
-                               "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
-    weib_results_1 <- rbind(names(weib_results_1),weib_results_1)
-    names(weib_results_1) <- 1:7
-    #################################
-    weib_results_2 <- as.data.frame(cbind(summary(out.fit, df.resid=Inf)$table[,1],(summary(out.fit, df.resid=Inf)$table[,1]-summary(out.fit, df.resid=Inf)$table[,2]*1.96),
-                                          (summary(out.fit, df.resid=Inf)$table[,1]+summary(out.fit, df.resid=Inf)$table[,2]*1.96),
-                                          exp(summary(out.fit, df.resid=Inf)$table[,1]*(-1)/out.fit$scale),
-                                          exp((summary(out.fit, df.resid=Inf)$table[,1]+summary(out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit$scale),
-                                          exp((summary(out.fit, df.resid=Inf)$table[,1]-summary(out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit$scale)))
-    weib_results_2$label <- rownames(weib_results_2)
-    names(weib_results_2) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
-                               "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
-    weib_results_2 <- rbind(names(weib_results_2),weib_results_2)
-    names(weib_results_2) <- 1:7
-    #################################
-    weib_results_3 <- as.data.frame(cbind(summary(med_out.fit, df.resid=Inf)$table[,1],(summary(med_out.fit, df.resid=Inf)$table[,1]-summary(med_out.fit, df.resid=Inf)$table[,2]*1.96),
-                                          (summary(med_out.fit, df.resid=Inf)$table[,1]+summary(med_out.fit, df.resid=Inf)$table[,2]*1.96),
-                                          exp(summary(med_out.fit, df.resid=Inf)$table[,1]*(-1)/med_out.fit$scale),
-                                          exp((summary(med_out.fit, df.resid=Inf)$table[,1]+summary(med_out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/med_out.fit$scale),
-                                          exp((summary(med_out.fit, df.resid=Inf)$table[,1]-summary(med_out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/med_out.fit$scale)))
-    weib_results_3$label <- rownames(weib_results_3)
-    names(weib_results_3) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
-                               "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
-    weib_results_3 <- rbind(names(weib_results_3),weib_results_3)
-    names(weib_results_3) <- 1:7
-    #################################
-    unweight_results_1 <- as.data.frame(cbind(summary(model_3_nomed)$table[,1],(summary(model_3_nomed)$table[,1]-summary(model_3_nomed)$table[,2]*1.96),
-                                              (summary(model_3_nomed)$table[,1]+summary(model_3_nomed)$table[,2]*1.96),
-                                              exp(summary(model_3_nomed)$table[,1]*(-1)/model_3_nomed$scale),
-                                              exp((summary(model_3_nomed)$table[,1]+summary(model_3_nomed)$table[,2]*1.96)*(-1)/model_3_nomed$scale),
-                                              exp((summary(model_3_nomed)$table[,1]-summary(model_3_nomed)$table[,2]*1.96)*(-1)/model_3_nomed$scale)))
-    unweight_results_1$label <- rownames(unweight_results_1)
-    names(unweight_results_1) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
-                                   "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
-    unweight_results_1 <- rbind(names(unweight_results_1),unweight_results_1)
-    names(unweight_results_1) <- 1:7
-    #################################
-    exp_m_results <-  as.data.frame(rbind(c(summary(med.fit, df.resid=Inf)$df.null+1,NA,NA,NA),
-                                          cbind(coef(summary(med.fit, df.resid=Inf))[,1],
-                                                coef(summary(med.fit, df.resid=Inf))[,1]-1.96*coef(summary(med.fit, df.resid=Inf))[,2],
-                                                coef(summary(med.fit, df.resid=Inf))[,1]+1.96*coef(summary(med.fit, df.resid=Inf))[,2],
-                                                coef(summary(med.fit, df.resid=Inf))[,4])))
-    row.names(exp_m_results)[1] <- "Raw_sample_size"
-    names(exp_m_results) <- c("Beta","lowCI","highCI","pvalue")
-    exp_m_results$label <- rownames(exp_m_results)
-    exp_m_results <- cbind(exp_m_results,matrix(NA,nrow = nrow(exp_m_results),ncol=2))
-    names(exp_m_results) <- 1:7
-    #################################
-    unweight_results_2 <- as.data.frame(cbind(summary(model_3)$table[,1],(summary(model_3)$table[,1]-summary(model_3)$table[,2]*1.96),
-                                              (summary(model_3)$table[,1]+summary(model_3)$table[,2]*1.96),
-                                              exp(summary(model_3)$table[,1]*(-1)/model_3$scale),
-                                              exp((summary(model_3)$table[,1]+summary(model_3)$table[,2]*1.96)*(-1)/model_3$scale),
-                                              exp((summary(model_3)$table[,1]-summary(model_3)$table[,2]*1.96)*(-1)/model_3$scale)))
-    unweight_results_2$label <- rownames(unweight_results_2)
-    names(unweight_results_2) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
-                                   "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
-    unweight_results_2 <- rbind(names(unweight_results_2),unweight_results_2)
-    names(unweight_results_2) <- 1:7
-    #################################
-    cox_results_1 <- as.data.frame(cbind(coef(summary(model_1_nomed))[,1],(coef(summary(model_1_nomed))[,1]-coef(summary(model_1_nomed))[,4]*1.96),
-                                         (coef(summary(model_1_nomed))[,1]+coef(summary(model_1_nomed))[,4]*1.96),coef(summary(model_1_nomed))[,2],
-                                         exp(coef(summary(model_1_nomed))[,1]-coef(summary(model_1_nomed))[,4]*1.96),
-                                         exp(coef(summary(model_1_nomed))[,1]+coef(summary(model_1_nomed))[,4]*1.96)))
-    cox_results_1$label <- rownames(cox_results_1)
-    names(cox_results_1) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
-                              "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
-    cox_results_1 <- rbind(names(cox_results_1),cox_results_1)
-    names(cox_results_1) <- 1:7
-    #################################
-    cox_results_2 <- as.data.frame(cbind(coef(summary(model_1))[,1],(coef(summary(model_1))[,1]-coef(summary(model_1))[,4]*1.96),
-                                         (coef(summary(model_1))[,1]+coef(summary(model_1))[,4]*1.96),coef(summary(model_1))[,2],
-                                         exp(coef(summary(model_1))[,1]-coef(summary(model_1))[,4]*1.96),
-                                         exp(coef(summary(model_1))[,1]+coef(summary(model_1))[,4]*1.96)))
-    cox_results_2$label <- rownames(cox_results_2)
-    names(cox_results_2) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
-                              "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
-    cox_results_2 <- rbind(names(cox_results_2),cox_results_2)
-    names(cox_results_2) <- 1:7
-    #################################
-    
-    
-    ####################################################################################################
-    printout_table <-  as.data.frame(rbind(c("Causal mediation model:",rep(NA,6)),temp,rep(NA,7),rep(NA,7),rep(NA,7),
-                                           c("Weibull model:",rep(NA,6)),weib_results_2,rep(NA,7),
-                                           rep(NA,7),rep(NA,7),
-                                           c("Weibull model without mediator:",rep(NA,6)),weib_results_1,rep(NA,7),
-                                           c("Mediator Weibull model without exposure:",rep(NA,6)),weib_results_3,rep(NA,7),
-                                           c("Exposure mediator model:",rep(NA,6)),exp_m_results,rep(NA,7),
-                                           rep(NA,7),rep(NA,7),
-                                           c("Unweighted Weibull model with mediator:",rep(NA,6)),unweight_results_2,rep(NA,7),
-                                           c("Unweighted Weibull model without mediator:",rep(NA,6)),unweight_results_1,rep(NA,7),
-                                           c("Cox model:",rep(NA,6)),cox_results_2,rep(NA,7),
-                                           c("Cox model without mediator:",rep(NA,6)),cox_results_1 ))
-    
-    if (clock %in% c("HannumAge", "GDF15Mort")){
-      wb <- createWorkbook()
-    }
-    addWorksheet(wb, paste0(clock))
-    writeData(wb,x=printout_table,sheet = paste0(clock),colNames = F,
-              rowNames = F)
+  if (Group %in% c("overallSample","female","male")){
+    var_list <- c("blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+                  "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
+                  "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
+                  "lowwhitevshiwhite","hibluevshiwhite",
+                  "lowbluevshiwhite","noworkvshiwhite","Smoker")#
+  } else {
+    var_list <- c(#"blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+      "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
+      "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
+      "lowwhitevshiwhite","hibluevshiwhite",
+      "lowbluevshiwhite","noworkvshiwhite","Smoker")#
   }
-  saveWorkbook(wb, file=paste0("Results/SES main models for ",var,
-                               format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"), overwrite = T)
+  
+  if (Group %in% c("female","male")){
+    covariates <- "+age+agesq+forborn"
+  } else {
+    covariates <- "+female+age+agesq+forborn"
+  }
+
+  for (var in var_list){
+    # var <- "lthsvscoll"
+    
+    explore_surveydata <- get("svyNHEanalysis_multiimpu")  ## get imputed survey object
+    # explore_surveydata <- get("svyNHEanalysis") ## get completed cases survey object
+    
+    explore_surveydata$variables$test <- explore_surveydata$variables[,var]
+    explore_surveydata <- subset(explore_surveydata,!is.na(test)&WTDN4YR>0)
+    
+    explore_surveydata$variables$Group <- explore_surveydata$variables[,Group]
+    explore_surveydata <- subset(explore_surveydata,Group==1)
+    #print(var)
+    
+    ##############  MODELS
+    model_printtable <-  NULL
+    
+    for (clock in clock_list){
+      #clock <- "Horvath"; clock <- "DNAmGrimAge2"
+      
+      print(clock)
+      #### mediator model
+      med.fit <- survey::svyglm(design=explore_surveydata,paste0(clock,"~",var,covariates),family="gaussian")
+      summary(med.fit)
+      med.fit$df.null
+      
+      #### mediator_outcome model
+      med_out.fit <- survey::svysurvreg(design=explore_surveydata,
+                                        as.formula(paste0("Surv(deathage,dead)~",clock,
+                                                          covariates)), dist="weibull")
+      summary(med_out.fit)
+      
+      
+      #### outcome model without mediators
+      #table(rawanalysis$deathage)
+      # model_1_nomed <- survey::svycoxph(design=explore_surveydata,
+      #                                   as.formula(paste0("Surv(deathage,dead)~",var,
+      #                                                     covariates)))
+      # model_1 <- survey::svycoxph(design=explore_surveydata,
+      #                             as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
+      #                                               covariates)))
+      # summary(model_1)
+      
+      
+      
+      model_3_nomed <- survreg(as.formula(paste0("Surv(deathage,dead)~",var,
+                                                 covariates)), dist="weibull",data=rawanalysis)
+      
+      model_3 <- survreg(as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
+                                           covariates)), dist="weibull",data=rawanalysis)
+      summary(model_3)
+      
+      
+      out.fit_nomed <- survey::svysurvreg(design=explore_surveydata,
+                                          as.formula(paste0("Surv(deathage,dead)~",var,
+                                                            covariates)), dist="weibull")
+      tryCatch({      
+        out.fit <- survey::svysurvreg(design=explore_surveydata,
+                                      as.formula(paste0("Surv(deathage,dead)~",var,"+",clock,
+                                                        covariates)), dist="weibull")
+        summary(out.fit)
+        
+        #### causal mediation models
+        med.out <- mediate(med.fit,out.fit,treat=var,mediator=clock)
+        summary(med.out)
+        
+        ###################################################################################################
+        #### Create table
+        temp <- as.data.frame(extract_mediation_summary(summary(med.out)))[c(5,8:10),]
+        temp$label <- rownames(temp)
+        temp <- rbind(names(temp),temp)
+        temp <- cbind(temp,matrix(NA,nrow = nrow(temp),ncol=1))
+        temp$sample <- med.out$nobs
+        names(temp) <- 1:7 },error=function(e){
+          cat("Error",conditionMessage(e),"\n");temp <- as.data.frame(matrix(data = NA,nrow = 7,ncol = 4 ))
+        })
+      
+      #################################
+      weib_results_1 <- as.data.frame(cbind(summary(out.fit_nomed, df.resid=Inf)$table[,1],(summary(out.fit_nomed, df.resid=Inf)$table[,1]-summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96),
+                                            (summary(out.fit_nomed, df.resid=Inf)$table[,1]+summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96),
+                                            exp(summary(out.fit_nomed, df.resid=Inf)$table[,1]*(-1)/out.fit_nomed$scale),
+                                            exp((summary(out.fit_nomed, df.resid=Inf)$table[,1]+summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit_nomed$scale),
+                                            exp((summary(out.fit_nomed, df.resid=Inf)$table[,1]-summary(out.fit_nomed, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit_nomed$scale)))
+      weib_results_1$label <- rownames(weib_results_1)
+      names(weib_results_1) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
+                                 "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
+      weib_results_1 <- rbind(names(weib_results_1),weib_results_1)
+      names(weib_results_1) <- 1:7
+      #################################
+      weib_results_2 <- as.data.frame(cbind(summary(out.fit, df.resid=Inf)$table[,1],(summary(out.fit, df.resid=Inf)$table[,1]-summary(out.fit, df.resid=Inf)$table[,2]*1.96),
+                                            (summary(out.fit, df.resid=Inf)$table[,1]+summary(out.fit, df.resid=Inf)$table[,2]*1.96),
+                                            exp(summary(out.fit, df.resid=Inf)$table[,1]*(-1)/out.fit$scale),
+                                            exp((summary(out.fit, df.resid=Inf)$table[,1]+summary(out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit$scale),
+                                            exp((summary(out.fit, df.resid=Inf)$table[,1]-summary(out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/out.fit$scale)))
+      weib_results_2$label <- rownames(weib_results_2)
+      names(weib_results_2) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
+                                 "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
+      weib_results_2 <- rbind(names(weib_results_2),weib_results_2)
+      names(weib_results_2) <- 1:7
+      #################################
+      weib_results_3 <- as.data.frame(cbind(summary(med_out.fit, df.resid=Inf)$table[,1],(summary(med_out.fit, df.resid=Inf)$table[,1]-summary(med_out.fit, df.resid=Inf)$table[,2]*1.96),
+                                            (summary(med_out.fit, df.resid=Inf)$table[,1]+summary(med_out.fit, df.resid=Inf)$table[,2]*1.96),
+                                            exp(summary(med_out.fit, df.resid=Inf)$table[,1]*(-1)/med_out.fit$scale),
+                                            exp((summary(med_out.fit, df.resid=Inf)$table[,1]+summary(med_out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/med_out.fit$scale),
+                                            exp((summary(med_out.fit, df.resid=Inf)$table[,1]-summary(med_out.fit, df.resid=Inf)$table[,2]*1.96)*(-1)/med_out.fit$scale)))
+      weib_results_3$label <- rownames(weib_results_3)
+      names(weib_results_3) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
+                                 "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
+      weib_results_3 <- rbind(names(weib_results_3),weib_results_3)
+      names(weib_results_3) <- 1:7
+      #################################
+      unweight_results_1 <- as.data.frame(cbind(summary(model_3_nomed)$table[,1],(summary(model_3_nomed)$table[,1]-summary(model_3_nomed)$table[,2]*1.96),
+                                                (summary(model_3_nomed)$table[,1]+summary(model_3_nomed)$table[,2]*1.96),
+                                                exp(summary(model_3_nomed)$table[,1]*(-1)/model_3_nomed$scale),
+                                                exp((summary(model_3_nomed)$table[,1]+summary(model_3_nomed)$table[,2]*1.96)*(-1)/model_3_nomed$scale),
+                                                exp((summary(model_3_nomed)$table[,1]-summary(model_3_nomed)$table[,2]*1.96)*(-1)/model_3_nomed$scale)))
+      unweight_results_1$label <- rownames(unweight_results_1)
+      names(unweight_results_1) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
+                                     "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
+      unweight_results_1 <- rbind(names(unweight_results_1),unweight_results_1)
+      names(unweight_results_1) <- 1:7
+      #################################
+      exp_m_results <-  as.data.frame(rbind(c(summary(med.fit, df.resid=Inf)$df.null+1,NA,NA,NA),
+                                            cbind(coef(summary(med.fit, df.resid=Inf))[,1],
+                                                  coef(summary(med.fit, df.resid=Inf))[,1]-1.96*coef(summary(med.fit, df.resid=Inf))[,2],
+                                                  coef(summary(med.fit, df.resid=Inf))[,1]+1.96*coef(summary(med.fit, df.resid=Inf))[,2],
+                                                  coef(summary(med.fit, df.resid=Inf))[,4])))
+      row.names(exp_m_results)[1] <- "Raw_sample_size"
+      names(exp_m_results) <- c("Beta","lowCI","highCI","pvalue")
+      exp_m_results$label <- rownames(exp_m_results)
+      exp_m_results <- cbind(exp_m_results,matrix(NA,nrow = nrow(exp_m_results),ncol=2))
+      names(exp_m_results) <- 1:7
+      #################################
+      unweight_results_2 <- as.data.frame(cbind(summary(model_3)$table[,1],(summary(model_3)$table[,1]-summary(model_3)$table[,2]*1.96),
+                                                (summary(model_3)$table[,1]+summary(model_3)$table[,2]*1.96),
+                                                exp(summary(model_3)$table[,1]*(-1)/model_3$scale),
+                                                exp((summary(model_3)$table[,1]+summary(model_3)$table[,2]*1.96)*(-1)/model_3$scale),
+                                                exp((summary(model_3)$table[,1]-summary(model_3)$table[,2]*1.96)*(-1)/model_3$scale)))
+      unweight_results_2$label <- rownames(unweight_results_2)
+      names(unweight_results_2) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
+                                     "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
+      unweight_results_2 <- rbind(names(unweight_results_2),unweight_results_2)
+      names(unweight_results_2) <- 1:7
+      #################################
+      # cox_results_1 <- as.data.frame(cbind(coef(summary(model_1_nomed))[,1],(coef(summary(model_1_nomed))[,1]-coef(summary(model_1_nomed))[,4]*1.96),
+      #                                      (coef(summary(model_1_nomed))[,1]+coef(summary(model_1_nomed))[,4]*1.96),coef(summary(model_1_nomed))[,2],
+      #                                      exp(coef(summary(model_1_nomed))[,1]-coef(summary(model_1_nomed))[,4]*1.96),
+      #                                      exp(coef(summary(model_1_nomed))[,1]+coef(summary(model_1_nomed))[,4]*1.96)))
+      # cox_results_1$label <- rownames(cox_results_1)
+      # names(cox_results_1) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
+      #                           "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
+      # cox_results_1 <- rbind(names(cox_results_1),cox_results_1)
+      # names(cox_results_1) <- 1:7
+      # #################################
+      # cox_results_2 <- as.data.frame(cbind(coef(summary(model_1))[,1],(coef(summary(model_1))[,1]-coef(summary(model_1))[,4]*1.96),
+      #                                      (coef(summary(model_1))[,1]+coef(summary(model_1))[,4]*1.96),coef(summary(model_1))[,2],
+      #                                      exp(coef(summary(model_1))[,1]-coef(summary(model_1))[,4]*1.96),
+      #                                      exp(coef(summary(model_1))[,1]+coef(summary(model_1))[,4]*1.96)))
+      # cox_results_2$label <- rownames(cox_results_2)
+      # names(cox_results_2) <- c("estimate","estimate lower95%CI","estimate higher95%CI",
+      #                           "Hazard Ratio","HR Lower95%CI","HR Higher 95%CI")
+      # cox_results_2 <- rbind(names(cox_results_2),cox_results_2)
+      # names(cox_results_2) <- 1:7
+      # #################################
+      
+      
+      ####################################################################################################
+      printout_table <-  as.data.frame(rbind(c("Causal mediation model:",rep(NA,6)),temp,rep(NA,7),rep(NA,7),rep(NA,7),
+                                             c("Weibull model:",rep(NA,6)),weib_results_2,rep(NA,7),
+                                             rep(NA,7),rep(NA,7),
+                                             c("Weibull model without mediator:",rep(NA,6)),weib_results_1,rep(NA,7),
+                                             c("Mediator Weibull model without exposure:",rep(NA,6)),weib_results_3,rep(NA,7),
+                                             c("Exposure mediator model:",rep(NA,6)),exp_m_results,rep(NA,7),
+                                             rep(NA,7),rep(NA,7),
+                                             c("Unweighted Weibull model with mediator:",rep(NA,6)),unweight_results_2,rep(NA,7),
+                                             c("Unweighted Weibull model without mediator:",rep(NA,6)),unweight_results_1,rep(NA,7)#,
+                                             #c("Cox model:",rep(NA,6)),cox_results_2,rep(NA,7),
+                                             #c("Cox model without mediator:",rep(NA,6)),cox_results_1 
+                                             ))
+      
+      if (clock %in% c("HannumAge", "GDF15Mort")){
+        wb <- createWorkbook()
+      }
+      addWorksheet(wb, paste0(clock))
+      writeData(wb,x=printout_table,sheet = paste0(clock),colNames = F,
+                rowNames = F)
+    }
+    saveWorkbook(wb, file=paste0("Results/SES main models for ",Group,"_",var,
+                                 format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"), overwrite = T)
+  }
 }
 # dev.off()
 ####################################################################################################
@@ -759,195 +848,241 @@ for (var in var_list){
 ## block 6.2: Bar plots for main models
 ####################################################################################################
 library(ggplot2)
-pdf(paste0("Results/SES bar plots for the main models",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
-    width = 12,height = 5)
 
-for (tt in var_list){
-  #tt="blackvswhite"
-  print(tt)
+for (Group in loopgroup){
+  pdf(paste0("Results/SES bar plots for the main models among ",Group,
+             #"_07_13_2025.pdf"),
+      format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
+      
+      width = 12,height = 5)
   
-  dataforplots <-NULL
-  for (i in 1:length(clock_list)){
-    #i=1;i=13
-    print(i)
-    print(clock_list[i])
-    work <-  readxl::read_excel(paste0("Results/SES main models for ",tt, format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
-                                sheet = i)
-    work <- as.data.frame(work[5,])
-    names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value")
-    work$set <- clock_list[i]
+  if (Group %in% c("overallSample","female","male")){
+    var_list <- c("blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+                  "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
+                  "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
+                  "lowwhitevshiwhite","hibluevshiwhite",
+                  "lowbluevshiwhite","noworkvshiwhite","Smoker")#
+  } else {
+    var_list <- c(#"blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+      "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
+      "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
+      "lowwhitevshiwhite","hibluevshiwhite",
+      "lowbluevshiwhite","noworkvshiwhite","Smoker")#
+  }
+  
+  for (tt in var_list){
+    #tt="blackvswhite"
+    print(tt)
     
-    dataforplots <- rbind(dataforplots,work)
+    dataforplots <-NULL
+    for (i in 1:length(clock_list)){
+      #i=1;i=13
+      print(i)
+      print(clock_list[i])
+      work <-  readxl::read_excel(paste0("Results/SES main models for ",Group,"_",tt,
+                                         #"_07_13_2025.xlsx"),
+                                  format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
+                                  sheet = i)
+      work <- as.data.frame(work[5,])
+      names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value")
+      work$set <- clock_list[i]
+      
+      dataforplots <- rbind(dataforplots,work)
+    }
+    
+    if(namelist== "main"){plot_clock_list <- c("HannumAge","HorvathAge","WeidnerAge","LinAge","VidalBraloAge","SkinBloodAge","ZhangAge",
+                                               " ","PhenoAge","GrimAgeMort","GrimAge2Mort",
+                                               "   ","DunedinPoAm","      ",
+                                               "YangCell","HorvathTelo","            ",
+                                               "sedentary","hei","packyrs","drinker","       ",
+                                               "waist2thigh","BMI","         ",
+                                               "lbdtcsi","HDL","LDL","Glucose","CRP")
+    
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA," "))
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"   "))
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"      "))
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"       "))
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"         "))
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            "))
+    } else {plot_clock_list <- clock_list}
+    
+    dataforplots <- as.data.frame(dataforplots)
+    
+    dataforplots$set <- factor(dataforplots$set,levels=plot_clock_list)
+    dataforplots$sign <- ""
+    dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
+    dataforplots$sign2 <- ""
+    dataforplots$sign2[dataforplots$p_value<(0.05/24)&!is.na(dataforplots$p_value)] <- "**"
+    
+    for (temp in c("Estimate","coef_lowCI","coef_highCI")){
+      dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
+    }
+    print(range(c(dataforplots$coef_lowCI,dataforplots$coef_highCI),na.rm = T))
+    dataforplots$starposition <- ifelse(dataforplots$coef_highCI<130,dataforplots$coef_highCI,140)
+    
+    
+    print(ggplot(data=dataforplots,aes(x=set,y=Estimate))+
+            coord_cartesian(ylim = c(-150,150))+
+            theme_classic()+ xlab(paste0("Proportion of mediated effects of DNA methylation clocks and biomarkers on ",tt))+
+            geom_errorbar(aes(x=set,y=Estimate,ymin=coef_lowCI,ymax=coef_highCI),
+                          position = position_dodge(0.3), width= 0.4)+
+            geom_point(aes(x=set,y=Estimate),position = position_dodge(0.3),size=2.5)+
+            geom_hline(yintercept = 0)+geom_hline(yintercept = 50,linetype=3)+geom_hline(yintercept = 100,linetype=4)+
+            geom_hline(yintercept = -50,linetype=3)+geom_hline(yintercept = -100,linetype=4)+
+            geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 12,color="purple",linetype="dashed")+
+            geom_vline(xintercept = 14,color="purple",linetype="dashed")+geom_vline(xintercept = 17,color="purple",linetype="dashed")+
+            geom_vline(xintercept = 22,color="purple",linetype="dashed")+geom_vline(xintercept = 25,color="purple",linetype="dashed")+
+            geom_text(aes(y=starposition,label=sign), vjust=-0.01, color="red",size = 10)+
+            geom_text(aes(y=starposition,label=sign2), vjust=-0.01, color="red",size = 10)+
+            labs(y="Proportion of mediated effects")+theme(axis.text.x = element_text(angle=30,hjust = 1))   )
   }
-  
-  if(namelist== "main"){plot_clock_list <- c("HannumAge","HorvathAge","WeidnerAge","LinAge","VidalBraloAge","SkinBloodAge","ZhangAge",
-                                             " ","YangCell","PhenoAge","GrimAgeMort","HorvathTelo","GrimAge2Mort",
-                                             "   ","DunedinPoAm","      ",
-                                             "sedentary","hei","packyrs","drinker","       ",
-                                             "waist2thigh","BMI","         ",
-                                             "lbdtcsi","HDL","LDL","Glucose","CRP")
-  
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA," "))
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"   "))
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"      "))
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"       "))
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"         "))
-  #dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            "))
-  } else {plot_clock_list <- clock_list}
-  
-  dataforplots <- as.data.frame(dataforplots)
-  
-  dataforplots$set <- factor(dataforplots$set,levels=plot_clock_list)
-  dataforplots$sign <- ""
-  dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
-  dataforplots$sign2 <- ""
-  dataforplots$sign2[dataforplots$p_value<(0.05/24)&!is.na(dataforplots$p_value)] <- "**"
-  
-  for (temp in c("Estimate","coef_lowCI","coef_highCI")){
-    dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
-  }
-  print(range(c(dataforplots$coef_lowCI,dataforplots$coef_highCI),na.rm = T))
-  
-  print(ggplot(data=dataforplots,aes(x=set,y=Estimate))+
-          coord_cartesian(ylim = c(-150,150))+
-          theme_classic()+ xlab(paste0("Proportion of mediated effects of DNA methylation clocks and biomarkers on ",tt))+
-          geom_errorbar(aes(x=set,y=Estimate,ymin=coef_lowCI,ymax=coef_highCI),
-                        position = position_dodge(0.3), width= 0.4)+
-          geom_point(aes(x=set,y=Estimate),position = position_dodge(0.3),size=2.5)+
-          geom_hline(yintercept = 0)+geom_hline(yintercept = 50,linetype=3)+geom_hline(yintercept = 100,linetype=4)+
-          geom_hline(yintercept = -50,linetype=3)+geom_hline(yintercept = -100,linetype=4)+
-          geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 14,color="purple",linetype="dashed")+
-          geom_vline(xintercept = 16,color="purple",linetype="dashed")+
-          geom_vline(xintercept = 21,color="purple",linetype="dashed")+geom_vline(xintercept = 24,color="purple",linetype="dashed")+
-          geom_text(aes(y=coef_highCI,label=sign), vjust=-0.01, color="red",size = 10)+
-          geom_text(aes(y=coef_highCI,label=sign2), vjust=-0.01, color="red",size = 10)+
-          labs(y="Proportion of mediated effects")+theme(axis.text.x = element_text(angle=30,hjust = 1))   )
+  dev.off()
 }
-dev.off()
+
 ####################################################################################################
 
 
 
 ####################################################################################################
 ## block 6.3: Bar plots putting together for main models
-####################################################################################################
-library(ggplot2)
-pdf(paste0("Results/SES bar plots for the main models putting together",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
-    width = 20,height = 5)
-
-for (tt in SES_tablelist){
-  #tt="blackvswhite"
-  print(tt)
-  jj=1
-  if (jj==1){title <- "race"  } else
-    if (jj==2){title <- "education" } else
-      if (jj==3){title <- "income" } else
-        if (jj==4){title <- "occupation" }
-  
-  dataforplots <- NULL
-  for (tttt_tt in tt){
-    for (i in 1:length(clock_list)){
-      #i=1;i=13
-      print(i)
-      print(clock_list[i])
-      work <-  readxl::read_excel(paste0("Results/SES main models for ",tttt_tt, format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
-                                  sheet = i)
-      work <- as.data.frame(work[5,])
-      names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value")
-      work$set <- clock_list[i]
-      work$var <- tttt_tt
-      
-      dataforplots <- rbind(dataforplots,work)
-    }
-  }
-  
-  if(namelist== "main"){plot_clock_list <- c("HannumAge","HorvathAge","WeidnerAge","LinAge","VidalBraloAge","SkinBloodAge","ZhangAge",
-                                             " ","YangCell","PhenoAge","GrimAgeMort","HorvathTelo","GrimAge2Mort",
-                                             "   ","DunedinPoAm","      ",
-                                             "sedentary","hei","packyrs","drinker","       ",
-                                             "waist2thigh","BMI","         ",
-                                             "lbdtcsi","HDL","LDL","Glucose","CRP")
-  
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA," ",tttt_tt))
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"   ",tttt_tt))
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"      ",tttt_tt))
-  
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"       ",tttt_tt))
-  dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"         ",tttt_tt))
-  #dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            ",tttt_tt))
-  } else {plot_clock_list <- clock_list}
-  
-  dataforplots <- as.data.frame(dataforplots)
-  
-  dataforplots$set <- factor(dataforplots$set,levels=plot_clock_list)
-  dataforplots$var <- factor(dataforplots$var,levels=tt)
-  
-  dataforplots$sign <- ""
-  dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
-  
-  for (temp in c("Estimate","coef_lowCI","coef_highCI")){
-    dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
-  }
-  print(range(c(dataforplots$coef_lowCI,dataforplots$coef_highCI),na.rm = T))
-  
-  print(ggplot(data=dataforplots,aes(x=set,y=Estimate,colour = var))+
-          coord_cartesian(ylim = c(-150,150))+
-          theme_classic()+ xlab(paste0("Proportion of mediated effects of DNA methylation clocks and biomarkers on ",title))+
-          geom_errorbar(aes(x=set,y=Estimate,ymin=coef_lowCI,ymax=coef_highCI),
-                        position = position_dodge(0.3), width= 0.4)+
-          geom_point(aes(x=set,y=Estimate),position = position_dodge(0.3),size=2.5)+
-          geom_hline(yintercept = 0)+geom_hline(yintercept = 50,linetype=3)+geom_hline(yintercept = 100,linetype=4)+
-          geom_hline(yintercept = -50,linetype=3)+geom_hline(yintercept = -100,linetype=4)+
-          geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 14,color="purple",linetype="dashed")+
-          geom_vline(xintercept = 16,color="purple",linetype="dashed")+
-          geom_vline(xintercept = 21,color="purple",linetype="dashed")+geom_vline(xintercept = 24,color="purple",linetype="dashed")+
-          scale_color_manual(values = c("red","blue","orange","grey"))+
-          geom_text(aes(y=coef_highCI,label=sign), vjust=-0.01, color="red",size = 10)+
-          labs(y="Proportion of mediated effects")+theme(axis.text.x = element_text(angle=30,hjust = 1))   )
-  jj=jj+1
-}
-dev.off()
-####################################################################################################
+# ####################################################################################################
+# library(ggplot2)
+# pdf(paste0("Results/SES bar plots for the main models putting together",format(Sys.Date(),"_%m_%d_%Y"),".pdf"),
+#     width = 20,height = 5)
+# 
+# for (tt in SES_tablelist){
+#   #tt="blackvswhite"
+#   print(tt)
+#   jj=1
+#   if (jj==1){title <- "race"  } else
+#     if (jj==2){title <- "education" } else
+#       if (jj==3){title <- "income" } else
+#         if (jj==4){title <- "occupation" }
+#   
+#   dataforplots <- NULL
+#   for (tttt_tt in tt){
+#     for (i in 1:length(clock_list)){
+#       #i=1;i=13
+#       print(i)
+#       print(clock_list[i])
+#       work <-  readxl::read_excel(paste0("Results/SES main models for ",tttt_tt, format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
+#                                   sheet = i)
+#       work <- as.data.frame(work[5,])
+#       names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value")
+#       work$set <- clock_list[i]
+#       work$var <- tttt_tt
+#       
+#       dataforplots <- rbind(dataforplots,work)
+#     }
+#   }
+#   
+#   if(namelist== "main"){plot_clock_list <- c("HannumAge","HorvathAge","WeidnerAge","LinAge","VidalBraloAge","SkinBloodAge","ZhangAge",
+#                                              " ","PhenoAge","GrimAgeMort","GrimAge2Mort",
+#                                              "   ","DunedinPoAm","      ",
+#                                              "YangCell","HorvathTelo","            ",
+#                                              "sedentary","hei","packyrs","drinker","       ",
+#                                              "waist2thigh","BMI","         ",
+#                                              "lbdtcsi","HDL","LDL","Glucose","CRP")
+#   
+#   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA," ",tttt_tt))
+#   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"   ",tttt_tt))
+#   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"      ",tttt_tt))
+#   
+#   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"       ",tttt_tt))
+#   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"         ",tttt_tt))
+#   dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            ",tttt_tt))
+#   } else {plot_clock_list <- clock_list}
+#   
+#   dataforplots <- as.data.frame(dataforplots)
+#   
+#   dataforplots$set <- factor(dataforplots$set,levels=plot_clock_list)
+#   dataforplots$var <- factor(dataforplots$var,levels=tt)
+#   
+#   dataforplots$sign <- ""
+#   dataforplots$sign[dataforplots$p_value<(0.05)&!is.na(dataforplots$p_value)] <- "*"
+#   
+#   for (temp in c("Estimate","coef_lowCI","coef_highCI")){
+#     dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
+#   }
+#   print(range(c(dataforplots$coef_lowCI,dataforplots$coef_highCI),na.rm = T))
+#   
+#   print(ggplot(data=dataforplots,aes(x=set,y=Estimate,colour = var))+
+#           coord_cartesian(ylim = c(-150,150))+
+#           theme_classic()+ xlab(paste0("Proportion of mediated effects of DNA methylation clocks and biomarkers on ",title))+
+#           geom_errorbar(aes(x=set,y=Estimate,ymin=coef_lowCI,ymax=coef_highCI),
+#                         position = position_dodge(0.3), width= 0.4)+
+#           geom_point(aes(x=set,y=Estimate),position = position_dodge(0.3),size=2.5)+
+#           geom_hline(yintercept = 0)+geom_hline(yintercept = 50,linetype=3)+geom_hline(yintercept = 100,linetype=4)+
+#           geom_hline(yintercept = -50,linetype=3)+geom_hline(yintercept = -100,linetype=4)+
+#           geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 12,color="purple",linetype="dashed")+
+#           geom_vline(xintercept = 14,color="purple",linetype="dashed")+geom_vline(xintercept = 17,color="purple",linetype="dashed")+
+#           geom_vline(xintercept = 22,color="purple",linetype="dashed")+geom_vline(xintercept = 25,color="purple",linetype="dashed")+
+#           scale_color_manual(values = c("red","blue","orange","grey"))+
+#           geom_text(aes(y=coef_highCI,label=sign), vjust=-0.01, color="red",size = 10)+
+#           labs(y="Proportion of mediated effects")+theme(axis.text.x = element_text(angle=30,hjust = 1))   )
+#   jj=jj+1
+# }
+# dev.off()
+# ####################################################################################################
 
 
 ####################################################################################################
 ##  block 6.4: Printing out tables for main models
 ####################################################################################################
 wb <- createWorkbook()
-dataforplots_final <- NULL
-for (tt in var_list){
-  #tt <- "blackvswhite"
+
+for (Group in loopgroup){
+  dataforplots_final <- NULL
   
-  dataforplots <- NULL
-  for (i in 1:length(clock_list)){
-    #i=1;i=13
-    print(i)
-    print(clock_list[i])
-    work <-  readxl::read_excel(paste0("Results/SES main models for ",tt, 
-                                       format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
-                                sheet = i)
-    work <- as.data.frame(work[5,c(1:4,7)])
-    names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value","sample_size")
-    work$clock <- clock_list[i]
-    
-    dataforplots <- rbind(dataforplots,work)
+  if (Group %in% c("overallSample","female","male")){
+    var_list <- c("blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+                  "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
+                  "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
+                  "lowwhitevshiwhite","hibluevshiwhite",
+                  "lowbluevshiwhite","noworkvshiwhite","Smoker")#
+  } else {
+    var_list <- c(#"blackvswhite","latinovswhite","otherRacevswhite",#"otherHispvswhite","latinovsblack",
+      "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
+      "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
+      "lowwhitevshiwhite","hibluevshiwhite",
+      "lowbluevshiwhite","noworkvshiwhite","Smoker")#
   }
-  dataforplots$set <- tt
-  dataforplots$gap <- NA
   
-  if (is.null(dataforplots_final)){
-    dataforplots_final <- dataforplots
-  } else {dataforplots_final<- cbind(dataforplots_final,dataforplots)}
+  for (tt in var_list){
+    #tt <- "blackvswhite"
+    
+    dataforplots <- NULL
+    for (i in 1:length(clock_list)){
+      #i=1;i=13
+      print(i)
+      print(clock_list[i])
+      work <-  readxl::read_excel(paste0("Results/SES main models for ",Group,"_",tt, 
+                                         format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
+                                  sheet = i)
+      
+      work <- as.data.frame(work[5,c(1:4,7)])
+      names(work) <- c("Estimate","coef_lowCI","coef_highCI","p_value","sample_size")
+      work$clock <- clock_list[i]
+      
+      dataforplots <- rbind(dataforplots,work)
+    }
+    dataforplots$set <- tt
+    dataforplots$gap <- NA
+    
+    if (is.null(dataforplots_final)){
+      dataforplots_final <- dataforplots
+    } else {dataforplots_final<- cbind(dataforplots_final,dataforplots)}
+  }
+  addWorksheet(wb, paste0(Group,"mediation"))
+  writeData(wb,x=dataforplots_final,sheet = paste0(Group,"mediation"),
+            rowNames = F)
 }
-addWorksheet(wb, paste0("mediation"))
-writeData(wb,x=dataforplots_final,sheet = paste0("mediation"),
-          rowNames = F)
 
 dataforsurvival <- NULL
 for (SES_pp in var_list){
   #SES_pp <- "blackvswhite"
   
-  work <-  readxl::read_excel(paste0("Results/SES main models for ",SES_pp, 
+  work <-  readxl::read_excel(paste0("Results/SES main models for overallSample_",SES_pp, 
                                      format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
                               sheet = 1)
   
@@ -965,14 +1100,14 @@ writeData(wb,x=dataforsurvival,sheet = "Survival",
 
 dataformediator_final <- NULL
 for (tt in var_list){
-  #tt <- "blackvswhite"
+  #tt <- "Smoker"
   
   dataformediator <- NULL
   for (i in 1:length(clock_list)){
     #i=1;i=13
     print(i)
     print(clock_list[i])
-    work <-  readxl::read_excel(paste0("Results/SES main models for ",tt, 
+    work <-  readxl::read_excel(paste0("Results/SES main models for overallSample_",tt, 
                                        format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
                                 sheet = i)
     work <- as.data.frame(work[35,c(4:6,7)])
@@ -1008,7 +1143,7 @@ for (specific_reason in specific_reason_list){
                    "lthsvscoll","hsvscoll","somecollvscoll","hsvssomecoll",
                    "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
                    "lowwhitevshiwhite","hibluevshiwhite",
-                   "lowbluevshiwhite","noworkvshiwhite")#
+                   "lowbluevshiwhite","noworkvshiwhite","Smoker")#
   } else if (specific_reason %in% c("accimort","diabmort","cermort")){
     var_list <-  c("blackvswhite","latinovswhite","latinovsblack",
                    #"lthsvscoll","lths_hsvscoll",
@@ -1235,7 +1370,7 @@ for (specific_reason in specific_reason_list){
                    "lthsvscoll","hsvscoll","somecollvscoll",
                    "below1vsabove5","pir_1_2vsabove5","pir_2_5vsabove5",
                    "lowwhitevshiwhite","hibluevshiwhite",
-                   "lowbluevshiwhite","noworkvshiwhite")#
+                   "lowbluevshiwhite","noworkvshiwhite","Smoker")#
   } else if (specific_reason %in% c("cermort")){
     var_list <-  c("blackvswhite","latinovswhite","latinovsblack",
                    #"lthsvscoll","lths_hsvscoll",
@@ -1270,8 +1405,9 @@ for (specific_reason in specific_reason_list){
     
     
     if(namelist== "main"){plot_clock_list <- c("HannumAge","HorvathAge","WeidnerAge","LinAge","VidalBraloAge","SkinBloodAge","ZhangAge",
-                                               " ","YangCell","PhenoAge","GrimAgeMort","HorvathTelo","GrimAge2Mort",
+                                               " ","PhenoAge","GrimAgeMort","GrimAge2Mort",
                                                "   ","DunedinPoAm","      ",
+                                               "YangCell","HorvathTelo","            ",
                                                "sedentary","hei","packyrs","drinker","       ",
                                                "waist2thigh","BMI","         ",
                                                "lbdtcsi","HDL","LDL","Glucose","CRP")
@@ -1280,7 +1416,7 @@ for (specific_reason in specific_reason_list){
     dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"      "))
     dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"       "))
     dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"         "))
-    #dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            "))
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            "))
     } else {plot_clock_list <- clock_list}
     
     
@@ -1295,21 +1431,21 @@ for (specific_reason in specific_reason_list){
       dataforplots[,temp] <- as.numeric(dataforplots[,temp])*100
     }
     print(range(c(dataforplots$coef_lowCI,dataforplots$coef_highCI),na.rm = T))
-    
+    dataforplots$starposition <- ifelse(dataforplots$coef_highCI<130,dataforplots$coef_highCI,140)
     
     print(ggplot(data=dataforplots,aes(x=set,y=Estimate))+
             theme_classic()+ xlab(paste0("Proportion of mediated effects of DNA methylation clocks and biomarkers on ",tt,
                                          " with specific death of ",specific_reason))+
-            coord_cartesian(ylim = c(-150,380))+
+            coord_cartesian(ylim = c(-150,150))+
             geom_errorbar(aes(x=set,y=Estimate,ymin=coef_lowCI,ymax=coef_highCI),
                           position = position_dodge(0.3), width= 0.4)+
             geom_point(aes(x=set,y=Estimate),position = position_dodge(0.3),size=2.5)+
             geom_hline(yintercept = 0)+geom_hline(yintercept = 50,linetype=3)+geom_hline(yintercept = 100,linetype=4)+
             geom_hline(yintercept = -50,linetype=3)+geom_hline(yintercept = -100,linetype=4)+
-            geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 14,color="purple",linetype="dashed")+
-            geom_vline(xintercept = 16,color="purple",linetype="dashed")+
-            geom_vline(xintercept = 21,color="purple",linetype="dashed")+geom_vline(xintercept = 24,color="purple",linetype="dashed")+
-            geom_text(aes(y=coef_highCI,label=sign), vjust=-0.01, color="red",size = 10)+
+            geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 12,color="purple",linetype="dashed")+
+            geom_vline(xintercept = 14,color="purple",linetype="dashed")+geom_vline(xintercept = 17,color="purple",linetype="dashed")+
+            geom_vline(xintercept = 22,color="purple",linetype="dashed")+geom_vline(xintercept = 25,color="purple",linetype="dashed")+
+            geom_text(aes(y=starposition,label=sign), vjust=-0.01, color="red",size = 10)+
             labs(y="Proportion of mediated effects")+theme(axis.text.x = element_text(angle=30,hjust = 1))   )
   }
   dev.off()
@@ -1357,8 +1493,9 @@ for (specific_reason in specific_reason_list){
     }
     
     if(namelist== "main"){plot_clock_list <- c("HannumAge","HorvathAge","WeidnerAge","LinAge","VidalBraloAge","SkinBloodAge","ZhangAge",
-                                               " ","YangCell","PhenoAge","GrimAgeMort","HorvathTelo","GrimAge2Mort",
+                                               " ","PhenoAge","GrimAgeMort","GrimAge2Mort",
                                                "   ","DunedinPoAm","      ",
+                                               "YangCell","HorvathTelo","            ",
                                                "sedentary","hei","packyrs","drinker","       ",
                                                "waist2thigh","BMI","         ",
                                                "lbdtcsi","HDL","LDL","Glucose","CRP")
@@ -1368,7 +1505,7 @@ for (specific_reason in specific_reason_list){
     dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"      ",tttt_tt))
     dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"       ",tttt_tt))
     dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"         ",tttt_tt))
-    #dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            ",tttt_tt))
+    dataforplots <- rbind(dataforplots,c(NA,NA,NA,NA,NA,NA,NA,"            ",tttt_tt))
     } else {plot_clock_list <- clock_list}
     
     dataforplots <- as.data.frame(dataforplots)
@@ -1394,9 +1531,9 @@ for (specific_reason in specific_reason_list){
             geom_point(aes(x=set,y=Estimate),position = position_dodge(0.3),size=2.5)+
             geom_hline(yintercept = 0)+geom_hline(yintercept = 50,linetype=3)+geom_hline(yintercept = 100,linetype=4)+
             geom_hline(yintercept = -50,linetype=3)+geom_hline(yintercept = -100,linetype=4)+
-            geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 14,color="purple",linetype="dashed")+
-            geom_vline(xintercept = 16,color="purple",linetype="dashed")+
-            geom_vline(xintercept = 21,color="purple",linetype="dashed")+geom_vline(xintercept = 24,color="purple",linetype="dashed")+
+            geom_vline(xintercept = 8,color="purple",linetype="dashed")+geom_vline(xintercept = 12,color="purple",linetype="dashed")+
+            geom_vline(xintercept = 14,color="purple",linetype="dashed")+geom_vline(xintercept = 17,color="purple",linetype="dashed")+
+            geom_vline(xintercept = 22,color="purple",linetype="dashed")+geom_vline(xintercept = 25,color="purple",linetype="dashed")+
             scale_color_manual(values = c("red","blue","orange","grey"))+
             geom_text(aes(y=coef_highCI,label=sign), vjust=-0.01, color="red",size = 10)+
             geom_text(aes(y=coef_highCI,label=sign2), vjust=-0.01, color="red",size = 10)+
@@ -1452,7 +1589,7 @@ for (specific_reason in specific_reason_list){
   
   dataforsurvival <- NULL
   for (SES_pp in var_list){
-    #SES_pp <- "blackvswhite"
+    #SES_pp <- "Smoker"
     
     work <-  readxl::read_excel(paste0("Results/SES specific reason models for ",SES_pp," with specific death of ",specific_reason,
                                        format(Sys.Date(),"_%m_%d_%Y"), ".xlsx"),
